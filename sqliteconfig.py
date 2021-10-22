@@ -22,7 +22,7 @@ class DevelopmentConfig(Config):
     # database = 'demo_web_crawler'
     database = sqlite_config["sqlite"]["database"]
     # CHARSET = 'utf8mb4'
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///{}:{}@{}/{}?charset=utf8mb4'.format(database)
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///{}'.format(database)
 
 
 config = {

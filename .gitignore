@@ -1,1 +1,5 @@
 venv/*
+audio/*
+data/*
+checkpoint/*
+*.pyc

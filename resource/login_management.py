@@ -1,4 +1,4 @@
-from sqliteModel import create_user
+from sqliteModel import create_user,User,Update_database
 from flask_restful import abort, fields, reqparse, Resource
 from itsdangerous.exc import BadSignature, SignatureExpired
 from datetime import datetime
