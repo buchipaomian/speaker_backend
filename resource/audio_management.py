@@ -1,4 +1,4 @@
-from sqliteModel import create_audio_record, create_user,Audio_Record
+from sqliteModel import create_audio_record, create_user,Audio_Record,User
 from flask_restful import abort, fields, reqparse, Resource
 from itsdangerous.exc import BadSignature, SignatureExpired
 from datetime import datetime
@@ -8,6 +8,10 @@ from resource.general import general_serializer,pwd_context,reset_password_link,
 from werkzeug.datastructures import FileStorage
 from process.tools import path_generater,generate_random_file_path
 from process.speech2text import model,speech_to_text
+from process.voicefilter import voice_model,voice_embedder,voice_filter
+import os
+import librosa
+import soundfile as sf
 
 audio_parser = reqparse.RequestParser()
 audio_parser.add_argument(
@@ -37,7 +41,8 @@ class Audio_Link(Resource):
         if not audio_record:
             return {"error":"file not found"},404
         file_path = audio_record.file_path
-        return send_from_directory("./",file_path, cache_timeout=0, as_attachment=True),200
+        First_Path,Second_Name=os.path.split(file_path)
+        return send_from_directory(First_Path,Second_Name, cache_timeout=0, as_attachment=True)
         
 
 class Mixed_upload(Resource):
@@ -55,6 +60,14 @@ class Mixed_upload(Resource):
 
 
 filter_parser = reqparse.RequestParser()
+filter_parser.add_argument(
+    'token',
+    dest='token',
+    type=str,
+    required=True,
+    help='The token',
+    location='headers',
+)
 filter_parser.add_argument('audio_id',
                             dest='audio_id',
                             type=str,
@@ -70,10 +83,40 @@ class Filter_generator(Resource):
     #/filter
     def post(self):
         args = filter_parser.parse_args()
+        #here we suppose to check the token, but maybe later
+        token = args.token
         audio_id = args.audio_id
         embedder_id = args.embedder_id
-        
-        pass
+        try:
+            data = general_serializer.loads(token)
+        except SignatureExpired:
+            return {"error": "login failed"}, 401  # valid token, but expired
+        except BadSignature:
+            return {"error": "login failed"}, 401
+        user_email = data["useremail"]
+        user = User.query.filter_by(user_email=user_email).first()
+        if not user:
+            return {"error": "login failed"}, 401
+        if not user.user_activate:
+            return {"error": "login failed"}, 400
+        if user.user_last_token != token:
+            return {"error": "login failed"}, 401
+        for k in user.embedder_records:
+            if k.embedder_id == int(embedder_id):
+                #todo: maybe need to check if the id is int
+                embedder_file_path = k.file_path
+        audio_record = Audio_Record.query.filter_by(audio_id=audio_id).first()
+        if not audio_record:
+            return {"error":"file not found"},404
+        audio_file_path = audio_record.file_path
+        reference_wav,_ = librosa.load(embedder_file_path, sr=16000)
+        mixed_wav,_ = librosa.load(audio_file_path, sr=16000)
+        result_wav = voice_filter(reference_wav,mixed_wav,voice_model,voice_embedder)
+        file_type = 'wav'
+        result_file_path = generate_random_file_path("result",file_type)
+        audio_id = create_audio_record(result_file_path)
+        sf.write(result_file_path, result_wav, 16000)
+        return {'id':audio_id}
 
 class Text_result(Resource):
     #/to_text/<id>

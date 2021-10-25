@@ -1,0 +1,9 @@
+flask==2.0.2
+deepspeech==0.9.3
+flask_cors==3.0.10
+flask_restful==0.3.9
+flask_sqlalchemy==2.5.1
+passlib==1.7.4
+bcrypt==3.2.0
+librosa==0.8.1
+pyyaml==5.4.1

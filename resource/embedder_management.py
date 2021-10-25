@@ -7,6 +7,7 @@ from flask import send_from_directory
 from resource.general import general_serializer, pwd_context, reset_password_link, activate_user_link
 from werkzeug.datastructures import FileStorage
 from process.tools import path_generater
+import os
 
 profile_parser = reqparse.RequestParser()
 profile_parser.add_argument(
@@ -51,7 +52,9 @@ class Embedder_upload(Resource):
             return {"error": "login failed"}, 401
         file = args.embedder
         name = args.name
-        file_path = path_generater(name,"embedder")
+        file_type = file.filename.split('.')[-1]
+        final_name = name+"."+file_type
+        file_path = path_generater(final_name,"embedder")
         file.save(file_path)
         embedder_id = create_embedder_record(user,name,file_path)
         return {"status": True, "id":embedder_id, "name":name},200
@@ -101,8 +104,11 @@ class Embedder_Link(Resource):
         if user.user_last_token != token:
             return {"error": "login failed"}, 401
         for k in user.embedder_records:
-            if k.embedder_id == id:
-                return send_from_directory("./",k.file_path, cache_timeout=0, as_attachment=True),200
+            if k.embedder_id == int(id):
+                #todo: maybe need to check if the id is int
+                file_path = k.file_path
+                First_Path,Second_Name=os.path.split(file_path)
+                return send_from_directory(First_Path,Second_Name, cache_timeout=0, as_attachment=True)
         return {"error":"file not found, maybe it doesn't belong to you"},404
 
 class Embedder_remove(Resource):

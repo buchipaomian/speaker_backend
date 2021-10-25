@@ -3,3 +3,4 @@ audio/*
 data/*
 checkpoint/*
 *.pyc
+voicefilter.db

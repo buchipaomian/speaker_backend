@@ -1,7 +1,0 @@
-flask
-deepspeech
-flask_cors
-flask_restful
-flask_sqlalchemy
-passlib
-bcrypt
