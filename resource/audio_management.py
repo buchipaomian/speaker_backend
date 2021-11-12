@@ -1,4 +1,4 @@
-from sqliteModel import create_audio_record, create_user,Audio_Record,User
+from sqliteModel import create_audio_record, create_user,Audio_Record,User,Embedder_Record
 from flask_restful import abort, fields, reqparse, Resource
 from itsdangerous.exc import BadSignature, SignatureExpired
 from datetime import datetime
@@ -60,14 +60,6 @@ class Mixed_upload(Resource):
 
 
 filter_parser = reqparse.RequestParser()
-filter_parser.add_argument(
-    'token',
-    dest='token',
-    type=str,
-    required=True,
-    help='The token',
-    location='headers',
-)
 filter_parser.add_argument('audio_id',
                             dest='audio_id',
                             type=str,
@@ -83,32 +75,16 @@ class Filter_generator(Resource):
     #/filter
     def post(self):
         args = filter_parser.parse_args()
-        #here we suppose to check the token, but maybe later
-        token = args.token
         audio_id = args.audio_id
         embedder_id = args.embedder_id
-        try:
-            data = general_serializer.loads(token)
-        except SignatureExpired:
-            return {"error": "login failed"}, 401  # valid token, but expired
-        except BadSignature:
-            return {"error": "login failed"}, 401
-        user_email = data["useremail"]
-        user = User.query.filter_by(user_email=user_email).first()
-        if not user:
-            return {"error": "login failed"}, 401
-        if not user.user_activate:
-            return {"error": "login failed"}, 400
-        if user.user_last_token != token:
-            return {"error": "login failed"}, 401
-        for k in user.embedder_records:
-            if k.embedder_id == int(embedder_id):
-                #todo: maybe need to check if the id is int
-                embedder_file_path = k.file_path
+        embedder_record = Embedder_Record.query.filter_by(embedder_id=int(embedder_id)).first()
+        if not embedder_record:
+            return {"error":"file not found"},404
         audio_record = Audio_Record.query.filter_by(audio_id=audio_id).first()
         if not audio_record:
             return {"error":"file not found"},404
         audio_file_path = audio_record.file_path
+        embedder_file_path = embedder_record.file_path
         reference_wav,_ = librosa.load(embedder_file_path, sr=16000)
         mixed_wav,_ = librosa.load(audio_file_path, sr=16000)
         result_wav = voice_filter(reference_wav,mixed_wav,voice_model,voice_embedder)

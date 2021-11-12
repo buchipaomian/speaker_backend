@@ -1,4 +1,4 @@
-from sqliteModel import create_user, User,create_embedder_record
+from sqliteModel import Embedder_Record, create_user, User,create_embedder_record
 from flask_restful import abort, fields, reqparse, Resource
 from itsdangerous.exc import BadSignature, SignatureExpired
 from datetime import datetime
@@ -14,7 +14,7 @@ profile_parser.add_argument(
     'token',
     dest='token',
     type=str,
-    required=True,
+    required=False,
     help='The token',
     location='headers',
 )
@@ -36,20 +36,23 @@ class Embedder_upload(Resource):
     def post(self):
         args = profile_parser.parse_args()
         token = args.token
-        try:
-            data = general_serializer.loads(token)
-        except SignatureExpired:
-            return {"error": "login failed"}, 401  # valid token, but expired
-        except BadSignature:
-            return {"error": "login failed"}, 401
-        user_email = data["useremail"]
-        user = User.query.filter_by(user_email=user_email).first()
-        if not user:
-            return {"error": "login failed"}, 401
-        if not user.user_activate:
-            return {"error": "login failed"}, 400
-        if user.user_last_token != token:
-            return {"error": "login failed"}, 401
+        if not token:
+            user = User.query.filter_by(user_id=3).first()
+        else:
+            try:
+                data = general_serializer.loads(token)
+            except SignatureExpired:
+                return {"error": "login failed"}, 401  # valid token, but expired
+            except BadSignature:
+                return {"error": "login failed"}, 401
+            user_email = data["useremail"]
+            user = User.query.filter_by(user_email=user_email).first()
+            if not user:
+                return {"error": "login failed"}, 401
+            if not user.user_activate:
+                return {"error": "login failed"}, 400
+            if user.user_last_token != token:
+                return {"error": "login failed"}, 401
         file = args.embedder
         name = args.name
         file_type = file.filename.split('.')[-1]
@@ -87,29 +90,12 @@ class Embedder_list(Resource):
 class Embedder_Link(Resource):
     #/embedder/<id>
     def get(self,id):
-        args = profile_parser.parse_args()
-        token = args.token
-        try:
-            data = general_serializer.loads(token)
-        except SignatureExpired:
-            return {"error": "login failed"}, 401  # valid token, but expired
-        except BadSignature:
-            return {"error": "login failed"}, 401
-        user_email = data["useremail"]
-        user = User.query.filter_by(user_email=user_email).first()
-        if not user:
-            return {"error": "login failed"}, 401
-        if not user.user_activate:
-            return {"error": "login failed"}, 400
-        if user.user_last_token != token:
-            return {"error": "login failed"}, 401
-        for k in user.embedder_records:
-            if k.embedder_id == int(id):
-                #todo: maybe need to check if the id is int
-                file_path = k.file_path
-                First_Path,Second_Name=os.path.split(file_path)
-                return send_from_directory(First_Path,Second_Name, cache_timeout=0, as_attachment=True)
-        return {"error":"file not found, maybe it doesn't belong to you"},404
+        target_embedder = Embedder_Record.query.filter_by(embedder_id=int(id)).first()
+        if not target_embedder:
+            return {"error":"file not found, maybe it doesn't belong to you"},404
+        file_path = target_embedder.file_path
+        First_Path,Second_Name=os.path.split(file_path)
+        return send_from_directory(First_Path,Second_Name, cache_timeout=0, as_attachment=True)
 
 class Embedder_remove(Resource):
     #this may not required

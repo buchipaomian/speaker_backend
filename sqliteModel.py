@@ -48,6 +48,7 @@ def create_user(user_infor):
     new_user.user_top_secrect = "111"
     db.session.add(new_user)
     db.session.commit()
+    print(new_user.user_id)
     return True
 
 def create_embedder_record(user,name,file_path):
