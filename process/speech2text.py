@@ -21,7 +21,7 @@ def splitVoiceAndSave(musicFileName):
     # minimal voice value
     voiceMinValue = 0.01
     # Time interval between two sentences（second）
-    voiceMaxDistanceSecond = 0.4
+    voiceMaxDistanceSecond = 0.2
     # The minimum time length of a single audio（second）
     voiceMinSecond = 0.1
     sig, sample_rate = sf.read(musicFileName)
@@ -30,7 +30,10 @@ def splitVoiceAndSave(musicFileName):
     print("time：%s" % (sig.shape[0] / sample_rate), '秒')
 
     # 
-    inputData = sig
+    if len(sig.T) == 2:
+        inputData = sig.T[0]
+    else:
+        inputData = sig
 
     dd = {}
     for k, v in enumerate(inputData):
