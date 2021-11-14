@@ -69,25 +69,31 @@ def splitVoiceAndSave(musicFileName):
 
     voiceTimeList = [x for x in list1 if len(x) > voiceMinSecond * sample_rate]
     print('total segement：', len(voiceTimeList))
+    NewVoiceTimeList = []
     result_audio_list = []
     for voiceTime in voiceTimeList:
         voiceTime1 = int(max(0, voiceTime[0] - 0.8 * sample_rate))
         voiceTime2 = int(min(sig.shape[0], voiceTime[-1] + 0.8 * sample_rate))
-        temp_audio = inputData[voiceTime1:voiceTime2]
-        temp_path = os.path.join("data",os.path.splitext(os.path.split(musicFileName)[-1])[0] + '_%d_%d_%s_split.wav' % (voiceTime1, voiceTime2, sample_rate))
-        with wave.open(temp_path,"wb") as outwave:
-            nchannels = 1
-            sampwidth = 2
-            fs = sample_rate
-            data_size = len(temp_audio)
-            framerate = int(fs)
-            nframes = data_size
-            comptype = "NONE"
-            compname = "not compressed"
-            outwave.setparams((nchannels, sampwidth, framerate, nframes, comptype, compname))
-            for v in temp_audio:
-                outwave.writeframes(struct.pack('h', int(v * 64000 / 2)))
-        result_audio_list.append(temp_path)
+        NewVoiceTimeList.append(voiceTime1)
+        NewVoiceTimeList.append(voiceTime2)
+    NewVoiceTimeList.sort()
+    for i in range(0,len(NewVoiceTimeList),2):
+        if i < len(NewVoiceTimeList):
+            temp_audio = inputData[NewVoiceTimeList[i]:NewVoiceTimeList[i+1]]
+            temp_path = os.path.join("data",os.path.splitext(os.path.split(musicFileName)[-1])[0] + '_%d_%d_%s_split.wav' % (NewVoiceTimeList[i], NewVoiceTimeList[i+1], sample_rate))
+            with wave.open(temp_path,"wb") as outwave:
+                nchannels = 1
+                sampwidth = 2
+                fs = sample_rate
+                data_size = len(temp_audio)
+                framerate = int(fs)
+                nframes = data_size
+                comptype = "NONE"
+                compname = "not compressed"
+                outwave.setparams((nchannels, sampwidth, framerate, nframes, comptype, compname))
+                for v in temp_audio:
+                    outwave.writeframes(struct.pack('h', int(v * 64000 / 2)))
+            result_audio_list.append(temp_path)
     return result_audio_list
 
 def speech_to_text(audio_file_path,model):
@@ -103,7 +109,8 @@ def speech_to_text(audio_file_path,model):
             data16 = np.frombuffer(buffer, dtype=np.int16)
             type(data16)
             text = model.stt(data16)
-            result_text_list.append(text)
+            if text:
+                result_text_list.append(text)
         os.remove(temp_path)
     return result_text_list
 
